@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist for OBS</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: transparent; /* Transparent background for OBS */
+        }
+        .task-container {
+            width: 300px;
+            margin: 20px;
+            background-color: rgba(255, 255, 255, 0);
+            padding: 20px;
+            border-radius: 8px;
+        }
+        h2 {
+            color: red;
+            cursor: pointer;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            max-height: 400px;
+            overflow-y: auto;
+            scrollbar-width: none; /* Hide scrollbar for Firefox */
+        }
+        ul::-webkit-scrollbar {
+            display: none; /* Hide scrollbar for Chrome, Safari, Edge */
+        }
+        li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            text-align: left; /* Left justify text */
+        }
+        .task-text {
+            flex-grow: 1; /* Ensure the task text fills available space */
+            text-align: left;
+        }
+        .completed-task {
+            text-decoration: line-through;
+            color: grey;
+        }
+        .completion-info {
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .completion-red {
+            color: red;
+        }
+        .completion-yellow {
+            color: yellow;
+        }
+        .completion-green {
+            color: green;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .opacity-slider {
+            margin-top: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div class="task-container">
+        <h2 @click="toggleTitleEdit" @contextmenu.prevent="toggleUI">{{ title }}</h2>
+        <input v-if="editingTitle" v-model="title" @blur="saveTitle" @keyup.enter="saveTitle" placeholder="Edit title">
+
+        <!-- Opacity Slider -->
+        <input v-if="showUIElements" type="range" min="0" max="1" step="0.01" v-model="opacity" class="opacity-slider">
+
+        <!-- Task Input -->
+        <input v-if="showUIElements" v-model="newTask" placeholder="Add a new task" @keyup.enter="addTask">
+
+        <!-- Task List -->
+        <ul>
+            <li v-for="(task, index) in sortedTasks" :key="task.id" :style="{ backgroundColor: `rgba(0, 0, 0, ${opacity})` }" :class="{ 'completed-task': task.completed }">
+                <input type="checkbox" v-model="task.completed" class="checkbox" @change="saveTasks">
+                <span class="task-text" @contextmenu.prevent="toggleAllTaskTextColors" :style="{ color: task.completed ? 'grey' : task.textColor }">{{ task.text }}</span>
+                <button v-if="showUIElements" @click="removeTask(index)">Remove</button>
+            </li>
+        </ul>
+
+        <!-- Completion Info -->
+        <div :class="completionClass" class="completion-info">{{ completedTasks }} completed out of {{ totalTasks }} total ({{ completionPercentage }}% completion)</div>
+    </div>
+</div>
+
+<!-- Vue.js Script -->
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            const checklistId = 'rightHandedWeapons';  // Use this variable for the checklist ID
+            return {
+                checklistId,
+                title: this.loadTitle(checklistId),
+                editingTitle: false,
+                newTask: '',
+                tasks: this.loadTasks(checklistId),
+                showUIElements: false,   // To toggle visibility of buttons/input
+                opacity: 0.85,           // Default opacity for task backgrounds
+            };
+        },
+        computed: {
+            completedTasks() {
+                return this.tasks.filter(task => task.completed).length;
+            },
+            totalTasks() {
+                return this.tasks.length;
+            },
+            completionPercentage() {
+                return this.totalTasks === 0 ? 0 : ((this.completedTasks / this.totalTasks) * 100).toFixed(2);
+            },
+            completionClass() {
+                if (this.completionPercentage == 100) {
+                    return 'completion-green';
+                } else if (this.completionPercentage >= 50) {
+                    return 'completion-yellow';
+                } else {
+                    return 'completion-red';
+                }
+            },
+            sortedTasks() {
+                // Sort tasks with incomplete ones at the top, completed ones at the bottom
+                return this.tasks.slice().sort((a, b) => a.completed - b.completed);
+            }
+        },
+        methods: {
+            // Add new task
+            addTask() {
+                if (this.newTask !== '') {
+                    this.tasks.push({
+                        id: Date.now(),
+                        text: this.newTask,
+                        completed: false,
+                        textColor: 'white'  // Default text color for new tasks
+                    });
+                    this.newTask = '';
+                    this.saveTasks();
+                }
+            },
+            // Remove task
+            removeTask(index) {
+                this.tasks.splice(index, 1);
+                this.saveTasks();
+            },
+            // Toggle title editing
+            toggleTitleEdit() {
+                this.editingTitle = !this.editingTitle;
+            },
+            // Save title to localStorage
+            saveTitle() {
+                localStorage.setItem(`title-${this.checklistId}`, this.title);
+                this.editingTitle = false;
+            },
+            // Save tasks to localStorage
+            saveTasks() {
+                localStorage.setItem(`tasks-${this.checklistId}`, JSON.stringify(this.tasks));
+            },
+            // Load tasks from localStorage
+            loadTasks(checklistId) {
+                const storedTasks = localStorage.getItem(`tasks-${checklistId}`);
+                return storedTasks ? JSON.parse(storedTasks) : [];
+            },
+            // Load title from localStorage
+            loadTitle(checklistId) {
+                const storedTitle = localStorage.getItem(`title-${checklistId}`);
+                return storedTitle ? storedTitle : 'Checklist';
+            },
+            // Toggle UI elements (right-click on title)
+            toggleUI() {
+                this.showUIElements = !this.showUIElements;
+            },
+            // Toggle text color for all tasks between black and white
+            toggleAllTaskTextColors() {
+                const allBlack = this.tasks.every(task => task.textColor === 'black');
+                this.tasks.forEach(task => {
+                    if (!task.completed) {
+                        task.textColor = allBlack ? 'white' : 'black';
+                    }
+                });
+                this.saveTasks();
+            }
+        },
+        watch: {
+            tasks: {
+                handler() {
+                    // Save tasks whenever they change and reapply sorting after every change
+                    this.saveTasks();
+                },
+                deep: true
+            }
+        }
+    });
+</script>
+</body>
+</html>
