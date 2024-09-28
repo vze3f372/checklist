@@ -94,12 +94,13 @@
 
         <!-- Task List -->
         <ul>
-            <li v-for="(task, index) in sortedTasks" :key="task.id" :style="{ backgroundColor: `rgba(0, 0, 0, ${opacity})` }" :class="{ 'completed-task': task.completed }">
+            <li v-for="(task) in sortedTasks" :key="task.id" :style="{ backgroundColor: `rgba(0, 0, 0, ${opacity})` }" :class="{ 'completed-task': task.completed }">
                 <input type="checkbox" v-model="task.completed" class="checkbox" @change="saveTasks">
                 <span class="task-text" @contextmenu.prevent="toggleAllTaskTextColors" :style="{ color: task.completed ? 'grey' : task.textColor }">{{ task.text }}</span>
-                <button v-if="showUIElements" @click="removeTask(index)">Remove</button>
+                <button v-if="showUIElements" @click="removeTask(task.id)">Remove</button>
             </li>
         </ul>
+
 
         <!-- Completion Info -->
         <div :class="completionClass" class="completion-info">{{ completedTasks }} completed out of {{ totalTasks }} total ({{ completionPercentage }}% completion)</div>
@@ -160,10 +161,13 @@
                     this.saveTasks();
                 }
             },
-            // Remove task
-            removeTask(index) {
-                this.tasks.splice(index, 1);
-                this.saveTasks();
+            // Remove task by ID
+            removeTask(taskId) {
+                const taskIndex = this.tasks.findIndex(task => task.id === taskId);
+                if (taskIndex !== -1) {
+                    this.tasks.splice(taskIndex, 1);
+                    this.saveTasks();
+                }
             },
             // Toggle title editing
             toggleTitleEdit() {
@@ -216,3 +220,6 @@
 </script>
 </body>
 </html>
+
+
+
